@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel Admin Alo Rico</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      margin: 0;
+      padding: 0;
+    }
+    .login {
+      max-width: 300px;
+      margin: 100px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .login input {
+      margin: 10px 0;
+      padding: 10px;
+      width: 100%;
+      font-size: 16px;
+    }
+    .panel {
+      display: none;
+      padding: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ccc;
+    }
+    .editable {
+      background: #ffffcc;
+    }
+    .nuevo-producto {
+      margin-top: 20px;
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+    }
+    .nuevo-producto input {
+      margin: 5px;
+    }
+  </style>
+</head>
+<body>
+<div class="login" id="login">
+  <h2>Panel de Administración</h2>
+  <input type="password" id="clave" placeholder="Ingresar contraseña" />
+  <button onclick="verificarClave()">Entrar</button>
+</div>
+
+<div class="panel" id="panel">
+  <h1>Editar Menú de Alo Rico</h1>
+  <table id="tabla"></table>
+
+  <div class="nuevo-producto">
+    <h3>Agregar nuevo producto</h3>
+    <input id="nuevoNombre" placeholder="Nombre" />
+    <input id="nuevoPrecio" type="number" placeholder="Precio" />
+    <input id="nuevoIngredientes" placeholder="Ingredientes" />
+    <input id="nuevoImagen" placeholder="img-pizza/nombre.jpg" />
+    <button onclick="agregarProducto()">Guardar nuevo</button>
+  </div>
+</div>
+
+<script>
+  const TOKEN = 'TU_TOKEN_PERSONAL';
+  const USER = '1967-ROB';
+  const REPO = 'Admin-Alo-Rico';
+  const FILEPATH = 'precios.json';
+
+  const CONTRASENA = '1234'; // cámbialo por tu clave real
+
+  function verificarClave() {
+    const pass = document.getElementById('clave').value;
+    if (pass === CONTRASENA) {
+      document.getElementById('login').style.display = 'none';
+      document.getElementById('panel').style.display = 'block';
+      cargarDatos();
+    } else {
+      alert('Contraseña incorrecta');
+    }
+  }
+
+  let hashSHA;
+  let jsonData;
+
+  async function cargarDatos() {
+    const res = await fetch(`https://api.github.com/repos/${USER}/${REPO}/contents/${FILEPATH}`, {
+      headers: { Authorization: `Bearer ${TOKEN}` }
+    });
+    const data = await res.json();
+    const content = atob(data.content);
+    jsonData = JSON.parse(content);
+    hashSHA = data.sha;
+    renderTabla();
+  }
+
+  function renderTabla() {
+    const tabla = document.getElementById('tabla');
+    tabla.innerHTML = '<tr><th>Nombre</th><th>Precio</th><th>Ingredientes</th><th>Imagen</th><th>Guardar</th></tr>';
+    Object.entries(jsonData).forEach(([nombre, info]) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${nombre}</td>
+        <td><input class="editable" value="${info.precio}" id="precio-${nombre}" /></td>
+        <td><input class="editable" value="${info.ingredientes}" id="ing-${nombre}" /></td>
+        <td><input class="editable" value="${info.imagen}" id="img-${nombre}" /></td>
+        <td><button onclick="guardar('${nombre}')">Guardar</button></td>
+      `;
+      tabla.appendChild(tr);
+    });
+  }
+
+  function guardar(nombre) {
+    const precio = parseInt(document.getElementById(`precio-${nombre}`).value);
+    const ingredientes = document.getElementById(`ing-${nombre}`).value;
+    const imagen = document.getElementById(`img-${nombre}`).value;
+    jsonData[nombre] = { precio, ingredientes, imagen, categoria: 'pizza' };
+    subirArchivo();
+  }
+
+  function agregarProducto() {
+    const nombre = document.getElementById('nuevoNombre').value;
+    const precio = parseInt(document.getElementById('nuevoPrecio').value);
+    const ingredientes = document.getElementById('nuevoIngredientes').value;
+    const imagen = document.getElementById('nuevoImagen').value;
+    if (!nombre || !precio || !ingredientes || !imagen) return alert('Faltan datos');
+    jsonData[nombre] = { precio, ingredientes, imagen, categoria: 'pizza' };
+    document.getElementById('nuevoNombre').value = '';
+    document.getElementById('nuevoPrecio').value = '';
+    document.getElementById('nuevoIngredientes').value = '';
+    document.getElementById('nuevoImagen').value = '';
+    subirArchivo();
+  }
+
+  function subirArchivo() {
+    const nuevoContenido = btoa(JSON.stringify(jsonData, null, 2));
+    fetch(`https://api.github.com/repos/${USER}/${REPO}/contents/${FILEPATH}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: 'Actualización de precios',
+        content: nuevoContenido,
+        sha: hashSHA
+      })
+    }).then(r => {
+      if (r.ok) {
+        alert('Cambios guardados');
+        cargarDatos();
+      } else {
+        alert('Error al guardar');
+      }
+    });
+  }
+</script>
+</body>
+</html>
