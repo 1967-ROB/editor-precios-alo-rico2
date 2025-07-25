@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Admin Alo Rico</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #fff8ef;
+      padding: 20px;
+    }
+    .bloque {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      padding: 20px;
+    }
+    h1 {
+      color: #c24a00;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 15px;
+      background: #c24a00;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #login {
+      text-align: center;
+    }
+    #panel {
+      display: none;
+    }
+    .success {
+      color: green;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <div class="bloque" id="login">
+    <h1>Ingreso Administrativo</h1>
+    <input type="password" id="clave" placeholder="Contraseña de acceso">
+    <button onclick="verificarClave()">Ingresar</button>
+    <p id="errorLogin" class="error"></p>
+  </div>
+
+  <div class="bloque" id="panel">
+    <h1>Panel Admin Alo Rico</h1>
+    <label>Nombre del producto</label>
+    <input type="text" id="nombre">
+
+    <label>Precio (Gs)</label>
+    <input type="number" id="precio">
+
+    <label>Ingredientes</label>
+    <textarea id="ingredientes"></textarea>
+
+    <label>Imagen (JPG o PNG)</label>
+    <input type="file" id="imagen" accept="image/*">
+
+    <button onclick="guardarProducto()">Guardar producto</button>
+    <p id="resultado" class="success"></p>
+  </div>
+
+  <script>
+    const TOKEN = 'AQUI_TU_TOKEN'; // <-- Reemplaza con tu token personal
+    const USUARIO = '1967-ROB';
+    const REPO_JSON = 'Precio-Alo-rico';
+    const RUTA_JSON = 'precios.json';
+    const REPO_IMAGENES = 'Precio-Alo-rico'; // Mismo repo donde se alojan las imágenes
+    const RUTA_IMAGENES = 'img-pizza';
+
+    function verificarClave() {
+      const clave = document.getElementById('clave').value;
+      if (clave === 'secreta') {
+        document.getElementById('login').style.display = 'none';
+        document.getElementById('panel').style.display = 'block';
+      } else {
+        document.getElementById('errorLogin').textContent = 'Contraseña incorrecta';
+      }
+    }
+
+    async function guardarProducto() {
+      const nombre = document.getElementById('nombre').value.trim();
+      const precio = parseInt(document.getElementById('precio').value);
+      const ingredientes = document.getElementById('ingredientes').value.trim();
+      const imagenInput = document.getElementById('imagen');
+      const imagen = imagenInput.files[0];
+
+      if (!nombre || !precio || !ingredientes || !imagen) {
+        alert('Por favor completá todos los campos');
+        return;
+      }
+
+      const nombreArchivo = nombre.toLowerCase().replace(/\s+/g, '-') + '.' + imagen.name.split('.').pop();
+      const rutaImagen = `${RUTA_IMAGENES}/${nombreArchivo}`;
+
+      const contenido = await fetch(`https://api.github.com/repos/${USUARIO}/${REPO_JSON}/contents/${RUTA_JSON}`);
+      const data = await contenido.json();
+      const jsonActual = JSON.parse(atob(data.content));
+
+      jsonActual[nombre] = {
+        categoria: 'pizza',
+        precio: precio,
+        ingredientes: ingredientes,
+        imagen: nombreArchivo
+      };
+
+      await fetch(`https://api.github.com/repos/${USUARIO}/${REPO_JSON}/contents/${RUTA_JSON}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: `Actualización: Añadido ${nombre}`,
+          content: btoa(JSON.stringify(jsonActual, null, 2)),
+          sha: data.sha
+        })
+      });
+
+      const lector = new FileReader();
+      lector.onloadend = async () => {
+        const base64img = lector.result.split(',')[1];
+        const imgData = await fetch(`https://api.github.com/repos/${USUARIO}/${REPO_IMAGENES}/contents/${rutaImagen}`);
+        let imgSha = null;
+        if (imgData.ok) {
+          const imgJson = await imgData.json();
+          imgSha = imgJson.sha;
+        }
+
+        await fetch(`https://api.github.com/repos/${USUARIO}/${REPO_IMAGENES}/contents/${rutaImagen}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${TOKEN}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Subida imagen ${nombreArchivo}`,
+            content: base64img,
+            sha: imgSha || undefined
+          })
+        });
+
+        document.getElementById('resultado').textContent = 'Producto guardado con éxito';
+        document.getElementById('nombre').value = '';
+        document.getElementById('precio').value = '';
+        document.getElementById('ingredientes').value = '';
+        imagenInput.value = '';
+      };
+
+      lector.readAsDataURL(imagen);
+    }
+  </script>
+</body>
+</html>
