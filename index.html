@@ -49,12 +49,16 @@
     <label>Imagen (subí un archivo JPG)</label>
     <input type="file" id="imagen" accept="image/jpeg, image/png" />
 
-    <button onclick="generarJSON()">Generar JSON</button>
-    <textarea id="resultado" style="width:100%; height:150px; margin-top:10px;"></textarea>
+    <button onclick="subirProducto()">SUBIR</button>
   </div>
 
   <script>
-    function generarJSON() {
+    const TOKEN = 'TU_TOKEN_PERSONAL'; // Reemplazar por tu token real
+    const USER = '1967-ROB';
+    const REPO = 'precios-alo-rico';
+    const FILEPATH = 'precios.json';
+
+    async function subirProducto() {
       const nombre = document.getElementById('nombre').value.trim();
       const precio = parseInt(document.getElementById('precio').value);
       const ingredientes = document.getElementById('ingredientes').value.trim();
@@ -67,16 +71,47 @@
 
       const imagen = 'img-pizza/' + imagenInput.files[0].name;
 
-      const producto = {
-        [nombre]: {
+      try {
+        // Obtener el contenido actual del archivo JSON
+        const res = await fetch(`https://api.github.com/repos/${USER}/${REPO}/contents/${FILEPATH}`, {
+          headers: { Authorization: `Bearer ${TOKEN}` }
+        });
+        const data = await res.json();
+        const content = atob(data.content.replace(/\n/g, ''));
+        const jsonData = JSON.parse(content);
+
+        jsonData[nombre] = {
           categoria: 'pizza',
           precio,
           ingredientes,
           imagen
-        }
-      };
+        };
 
-      document.getElementById('resultado').value = JSON.stringify(producto, null, 2);
+        const nuevoContenido = btoa(unescape(encodeURIComponent(JSON.stringify(jsonData, null, 2))));
+
+        // Subir cambios al archivo precios.json
+        await fetch(`https://api.github.com/repos/${USER}/${REPO}/contents/${FILEPATH}`, {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${TOKEN}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Agregar producto: ${nombre}`,
+            content: nuevoContenido,
+            sha: data.sha
+          })
+        });
+
+        alert('Producto subido con éxito');
+        document.getElementById('nombre').value = '';
+        document.getElementById('precio').value = '';
+        document.getElementById('ingredientes').value = '';
+        document.getElementById('imagen').value = '';
+      } catch (error) {
+        alert('Error al subir producto: ' + error.message);
+        console.error(error);
+      }
     }
   </script>
 </body>
