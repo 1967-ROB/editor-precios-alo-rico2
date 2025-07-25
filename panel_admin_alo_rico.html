@@ -98,14 +98,20 @@
   let jsonData;
 
   async function cargarDatos() {
-    const res = await fetch(`https://api.github.com/repos/${USER}/${REPO}/contents/${FILEPATH}`, {
-      headers: { Authorization: `Bearer ${TOKEN}` }
-    });
-    const data = await res.json();
-    const content = atob(data.content);
-    jsonData = JSON.parse(content);
-    hashSHA = data.sha;
-    renderTabla();
+    try {
+      const res = await fetch(`https://api.github.com/repos/${USER}/${REPO}/contents/${FILEPATH}`, {
+        headers: { Authorization: `Bearer ${TOKEN}` }
+      });
+      const data = await res.json();
+      if (!data.content) throw new Error("No se encontró contenido en la respuesta");
+      const content = atob(data.content.replace(/\n/g, ''));
+      jsonData = JSON.parse(content);
+      hashSHA = data.sha;
+      renderTabla();
+    } catch (error) {
+      alert("Error cargando el menú: " + error.message);
+      console.error(error);
+    }
   }
 
   function renderTabla() {
@@ -147,7 +153,7 @@
   }
 
   function subirArchivo() {
-    const nuevoContenido = btoa(JSON.stringify(jsonData, null, 2));
+    const nuevoContenido = btoa(unescape(encodeURIComponent(JSON.stringify(jsonData, null, 2))));
     fetch(`https://api.github.com/repos/${USER}/${REPO}/contents/${FILEPATH}`, {
       method: 'PUT',
       headers: {
