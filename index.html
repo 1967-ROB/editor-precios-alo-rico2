@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ingreso de Productos - Alo Rico</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9f9f9;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .formulario {
+      max-width: 500px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .formulario input, .formulario button {
+      display: block;
+      width: 100%;
+      margin: 10px 0;
+      padding: 10px;
+      font-size: 16px;
+    }
+    .formulario input[type="file"] {
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Nuevo Producto - Alo Rico</h1>
+  <div class="formulario">
+    <label>Nombre del producto</label>
+    <input type="text" id="nombre" placeholder="Ej: Napolitana" />
+
+    <label>Precio</label>
+    <input type="number" id="precio" placeholder="Ej: 45000" />
+
+    <label>Ingredientes</label>
+    <input type="text" id="ingredientes" placeholder="Ej: Tomate, queso, ajo" />
+
+    <label>Imagen (subí un archivo JPG)</label>
+    <input type="file" id="imagen" accept="image/jpeg, image/png" />
+
+    <button onclick="generarJSON()">Generar JSON</button>
+    <textarea id="resultado" style="width:100%; height:150px; margin-top:10px;"></textarea>
+  </div>
+
+  <script>
+    function generarJSON() {
+      const nombre = document.getElementById('nombre').value.trim();
+      const precio = parseInt(document.getElementById('precio').value);
+      const ingredientes = document.getElementById('ingredientes').value.trim();
+      const imagenInput = document.getElementById('imagen');
+
+      if (!nombre || !precio || !ingredientes || !imagenInput.files.length) {
+        alert('Por favor completá todos los campos.');
+        return;
+      }
+
+      const imagen = 'img-pizza/' + imagenInput.files[0].name;
+
+      const producto = {
+        [nombre]: {
+          categoria: 'pizza',
+          precio,
+          ingredientes,
+          imagen
+        }
+      };
+
+      document.getElementById('resultado').value = JSON.stringify(producto, null, 2);
+    }
+  </script>
+</body>
+</html>
